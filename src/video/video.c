@@ -42,6 +42,7 @@
 #include <86box/ui.h>
 #include <86box/thread.h>
 #include <86box/video.h>
+#include <86box/groovy_mister.h>
 #include <86box/vid_svga.h>
 
 #include <minitrace/minitrace.h>
@@ -421,6 +422,11 @@ blit_thread(void *param)
 
         if (blit_func)
             blit_func(data->x, data->y, data->w, data->h, data->monitor_index);
+
+        /* Every video card hands its completed frames over here, so this is the one
+         * place the MiSTer output has to hook. It returns immediately when disabled,
+         * and runs on this thread rather than the emulation one. */
+        groovy_mister_blit(data->x, data->y, data->w, data->h, data->monitor_index);
 
         data->busy = 0;
 

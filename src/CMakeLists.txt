@@ -121,6 +121,8 @@ if(INSTRUMENT)
 endif()
 
 target_link_libraries(86Box
+    groovymister
+    switchres
     cpu
     char
     chipset
@@ -303,6 +305,8 @@ add_subdirectory(scsi)
 add_subdirectory(sound)
 add_subdirectory(utils)
 add_subdirectory(video)
+add_subdirectory(groovymister)
+add_subdirectory(switchres)
 
 if (APPLE)
     add_subdirectory(mac)

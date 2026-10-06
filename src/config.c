@@ -84,6 +84,7 @@
 #include <86box/midi.h>
 #include <86box/snd_mpu401.h>
 #include <86box/video.h>
+#include <86box/groovy_mister.h>
 #include <86box/path.h>
 #include <86box/plat.h>
 #include <86box/plat_dir.h>
@@ -2863,6 +2864,65 @@ config_load_global(void)
     load_global();
 }
 
+/* Load "GroovyMiSTer" section. */
+static void
+load_groovy_mister(void)
+{
+    ini_section_t cat = ini_find_section(config, "GroovyMiSTer");
+    const char   *p;
+
+    groovy_mister_enabled = ini_section_get_int(cat, "enabled", 0);
+
+    p = ini_section_get_string(cat, "host", NULL);
+    if (p != NULL)
+        strncpy(groovy_mister_host, p, sizeof(groovy_mister_host) - 1);
+    else
+        groovy_mister_host[0] = '\0';
+
+    /* Codes from the client's Lz4FramesCode: 0 raw, 1 LZ4, 7 NLC. */
+    groovy_mister_codec      = ini_section_get_int(cat, "codec", 7);
+    groovy_mister_near_level = ini_section_get_int(cat, "near_level", 0);
+    groovy_mister_audio      = ini_section_get_int(cat, "audio", 1);
+    groovy_mister_mtu        = ini_section_get_int(cat, "mtu", 1500);
+}
+
+/* Save "GroovyMiSTer" section. */
+static void
+save_groovy_mister(void)
+{
+    ini_section_t cat = ini_find_or_create_section(config, "GroovyMiSTer");
+
+    if (groovy_mister_enabled)
+        ini_section_set_int(cat, "enabled", groovy_mister_enabled);
+    else
+        ini_section_delete_var(cat, "enabled");
+
+    if (groovy_mister_host[0])
+        ini_section_set_string(cat, "host", groovy_mister_host);
+    else
+        ini_section_delete_var(cat, "host");
+
+    if (groovy_mister_codec != 7)
+        ini_section_set_int(cat, "codec", groovy_mister_codec);
+    else
+        ini_section_delete_var(cat, "codec");
+
+    if (groovy_mister_near_level)
+        ini_section_set_int(cat, "near_level", groovy_mister_near_level);
+    else
+        ini_section_delete_var(cat, "near_level");
+
+    if (!groovy_mister_audio)
+        ini_section_set_int(cat, "audio", groovy_mister_audio);
+    else
+        ini_section_delete_var(cat, "audio");
+
+    if (groovy_mister_mtu != 1500)
+        ini_section_set_int(cat, "mtu", groovy_mister_mtu);
+    else
+        ini_section_delete_var(cat, "mtu");
+}
+
 /* Load the specified or a default configuration file. */
 /* Returns 0 when the user chose not to load the configuration. */
 int
@@ -2970,6 +3030,7 @@ config_load(void)
         load_scan_code_mappings();      /* Scan code mappings */
         load_machine();                 /* Machine */
         load_video();                   /* Video */
+        load_groovy_mister();           /* GroovyMiSTer */
         load_input_devices();           /* Input devices */
         load_sound();                   /* Sound */
         load_network();                 /* Network */
@@ -4755,6 +4816,7 @@ config_save(void)
     save_scan_code_mappings();      /* Scan code mappings */
     save_machine();                 /* Machine */
     save_video();                   /* Video */
+    save_groovy_mister();           /* GroovyMiSTer */
     save_input_devices();           /* Input devices */
     save_sound();                   /* Sound */
     save_network();                 /* Network */

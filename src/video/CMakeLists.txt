@@ -19,6 +19,7 @@ add_library(vid OBJECT
     # Video Core
     agpgart.c
     video.c
+    groovy_mister.c
     vid_table.c
 
     # RAMDAC (Should this be its own library?)
@@ -190,4 +191,13 @@ add_library(voodoo OBJECT
 
 if(NOT MSVC AND (ARCH STREQUAL "i386" OR ARCH STREQUAL "x86_64"))
     target_compile_options(voodoo PRIVATE "-msse2")
+endif()
+
+# The vendored switchres C API declares its functions without an explicit (void), which
+# 86Box's own C build rejects outright (-Werror=strict-prototypes). Relaxed for the one
+# translation unit that includes that header, rather than editing third-party code or
+# loosening the setting for all of 86Box.
+if(NOT MSVC)
+    set_source_files_properties(groovy_mister.c PROPERTIES
+        COMPILE_OPTIONS "-Wno-strict-prototypes;-Wno-old-style-definition")
 endif()

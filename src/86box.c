@@ -96,6 +96,7 @@
 #include <86box/sound.h>
 #include <86box/midi.h>
 #include <86box/video.h>
+#include <86box/groovy_mister.h>
 #include <86box/ui.h>
 #include <86box/path.h>
 #include <86box/plat.h>
@@ -1581,6 +1582,10 @@ pc_init_modules(void)
 
     video_init();
 
+    /* After video_init so the blit thread exists, and after the config has been read so
+     * the host and codec are known. A no-op unless enabled in the config. */
+    groovy_mister_init();
+
     fdd_init();
     
     if (fdd_sounds_enabled) {
@@ -1977,6 +1982,10 @@ pc_close(UNUSED(thread_t *ptr))
 
     /* Claim the video blitter. */
     startblit();
+
+    /* Close the MiSTer session while the blitter is held, so no frame can be in flight
+     * on the blit thread while the client is torn down. */
+    groovy_mister_close();
 
     /* Terminate the UI thread. */
     is_quit = 1;
