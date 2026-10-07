@@ -49,6 +49,7 @@ SettingsGroovyMiSTer::SettingsGroovyMiSTer(QWidget *parent)
 {
     auto *outer = new QVBoxLayout(this);
     auto *form  = new QFormLayout();
+    form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
     chkEnabled = new QCheckBox(tr("Send video and audio to a MiSTer"), this);
     chkEnabled->setChecked(groovy_mister_enabled != 0);
@@ -75,12 +76,11 @@ SettingsGroovyMiSTer::SettingsGroovyMiSTer(QWidget *parent)
     }
     form->addRow(tr("&Monitor:"), cboMonitor);
 
-    auto *monitorNote =
-        new QLabel(tr("What the display can scan. This decides how a PC video mode reaches it: a "
-                      "640x480 70 Hz VGA mode is 31 kHz, which a 15 kHz CRT cannot show at all."),
-                   this);
-    monitorNote->setWordWrap(true);
-    form->addRow(QString(), monitorNote);
+    cboMonitor->setToolTip(tr("What the display can scan. This decides how a PC video mode "
+                              "reaches it: a 640x480 70 Hz VGA mode is 31 kHz, which a 15 kHz "
+                              "CRT cannot show at all and a PC monitor shows natively."));
+    auto *monitorNote = new QLabel(tr("What the display can scan."), this);
+    form->addRow(monitorNote);
 
     cboInterlace = new QComboBox(this);
     cboInterlace->addItem(tr("Interlace them (15 kHz displays)"), GROOVY_MISTER_INTERLACE_SPLIT);
@@ -89,13 +89,12 @@ SettingsGroovyMiSTer::SettingsGroovyMiSTer(QWidget *parent)
         groovy_mister_interlace == GROOVY_MISTER_INTERLACE_NEVER ? 1 : 0);
     form->addRow(tr("Modes the monitor cannot scan &progressively:"), cboInterlace);
 
-    auto *interlaceNote = new QLabel(
+    cboInterlace->setToolTip(
         tr("Interlacing sends the whole frame and lets the MiSTer split it into fields, so a "
            "31 kHz PC mode can be shown on a 15 kHz CRT. Leaving them progressive refuses those "
-           "modes instead, which is what you want on a monitor that can scan them natively."),
-        this);
-    interlaceNote->setWordWrap(true);
-    form->addRow(QString(), interlaceNote);
+           "modes instead, which is what you want on a monitor that can scan them natively."));
+    auto *interlaceNote = new QLabel(tr("The MiSTer splits the frame into fields."), this);
+    form->addRow(interlaceNote);
 
     cboCodec = new QComboBox(this);
     cboCodec->addItem(tr("NLC (near-lossless, recommended)"), 7);
@@ -111,7 +110,7 @@ SettingsGroovyMiSTer::SettingsGroovyMiSTer(QWidget *parent)
 
     chkAudio = new QCheckBox(tr("Send the emulated machine's audio too"), this);
     chkAudio->setChecked(groovy_mister_audio != 0);
-    form->addRow(QString(), chkAudio);
+    form->addRow(chkAudio);
 
     spinMtu = new QSpinBox(this);
     spinMtu->setRange(576, 9000);
@@ -120,8 +119,7 @@ SettingsGroovyMiSTer::SettingsGroovyMiSTer(QWidget *parent)
     form->addRow(tr("Network M&TU:"), spinMtu);
 
     auto *mtuNote = new QLabel(tr("1500 unless every hop to the MiSTer carries jumbo frames."), this);
-    mtuNote->setWordWrap(true);
-    form->addRow(QString(), mtuNote);
+    form->addRow(mtuNote);
 
     outer->addLayout(form);
     outer->addStretch(1);
