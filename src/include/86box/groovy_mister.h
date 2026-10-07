@@ -37,8 +37,17 @@ extern void groovy_mister_close(void);
  * disabled or not connected. */
 extern void groovy_mister_blit(int x, int y, int w, int h, int monitor_index);
 
-/* Emulated audio, s16 stereo interleaved, from the sound thread. */
-extern void groovy_mister_audio_frame(const int16_t *samples, int count);
+/* One tick of mixed emulated audio, from sound.c's sound_thread.
+ *
+ * `buf` is 86Box's finished output buffer - float or int16 depending on which sound
+ * backend is in use, which is what sound_is_float says - and `samples` is the count of
+ * interleaved stereo samples in it (frames * 2).
+ *
+ * This only queues. The datagram itself goes out from the blit thread, because the
+ * client's Windows RIO send path is not thread-safe and a send issued from another
+ * thread is dropped without an error; the blit thread owns the socket, so it is the one
+ * that drains this. */
+extern void groovy_mister_audio_frame(const void *buf, int samples, int is_float);
 
 #ifdef __cplusplus
 }

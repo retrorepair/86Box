@@ -33,6 +33,7 @@
 #include <86box/snd_ac97.h>
 #include <86box/timer.h>
 #include <86box/snd_mpu401.h>
+#include <86box/groovy_mister.h>
 #include <86box/sound.h>
 #include <86box/fdd_audio.h>
 #include <86box/hdd_audio.h>
@@ -928,6 +929,15 @@ sound_poll(UNUSED(void *priv))
                 outbuffer_ex_int16[c] = (int16_t) outbuffer[c];
             }
         }
+
+        /* Mirror the finished mix to the MiSTer, so the CRT's speakers get the same
+         * audio as the host and in step with the video. This only queues into a ring -
+         * the datagram goes out from the blit thread, which owns the socket. No-op
+         * unless the GroovyMiSTer output is streaming with audio on. */
+        if (sound_is_float)
+            groovy_mister_audio_frame(outbuffer_ex, sound_buf_len * 2, 1);
+        else
+            groovy_mister_audio_frame(outbuffer_ex_int16, sound_buf_len * 2, 0);
 
         if (sound_is_float)
             givealbuffer(outbuffer_ex);
