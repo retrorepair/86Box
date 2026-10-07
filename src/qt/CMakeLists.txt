@@ -190,6 +190,8 @@ add_library(ui STATIC
     qt_settingsotherperipherals.cpp
     qt_settingsotherperipherals.hpp
     qt_settingsotherperipherals.ui
+    qt_settingsgroovymister.cpp
+    qt_settingsgroovymister.hpp
     qt_settings_bus_tracking.cpp
     qt_settings_bus_tracking.hpp
     qt_settings_completer.cpp

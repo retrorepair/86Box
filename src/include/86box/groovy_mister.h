@@ -28,6 +28,25 @@ extern int  groovy_mister_near_level; /* NLC near-lossless level, 0 = lossless *
 extern int  groovy_mister_audio;      /* mirror emulated audio to the MiSTer */
 extern int  groovy_mister_mtu;
 
+/* switchres monitor preset. This is what decides whether a PC video mode reaches the
+   display as it was rendered or as something the display can actually scan: a 640x480
+   70Hz VGA mode is 31kHz progressive, which an arcade_15 monitor cannot show at all and a
+   PC monitor shows natively. Default arcade_15. */
+extern char groovy_mister_monitor[32];
+
+/* What to do when the preset only admits the mode as an interlaced one.
+
+   GROOVY_MISTER_INTERLACE_SPLIT is the useful setting and the default: 86Box renders a
+   whole progressive frame, so the frame is sent intact and the core splits it into fields.
+   It must never be sent as interlace mode 1 ("fields from client"), which makes the core
+   expect half the lines per blit against a buffer holding all of them.
+
+   GROOVY_MISTER_INTERLACE_NEVER refuses interlaced modelines outright, for a monitor that
+   can scan the mode natively - pair it with a preset that reaches 31kHz. */
+#define GROOVY_MISTER_INTERLACE_NEVER 0
+#define GROOVY_MISTER_INTERLACE_SPLIT 2
+extern int  groovy_mister_interlace;
+
 /* Called once at startup and shutdown; safe to call when disabled. */
 extern void groovy_mister_init(void);
 extern void groovy_mister_close(void);

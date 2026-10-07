@@ -51,6 +51,8 @@ int  groovy_mister_codec      = NLC;
 int  groovy_mister_near_level = 0;
 int  groovy_mister_audio      = 1;
 int  groovy_mister_mtu        = 1500;
+char groovy_mister_monitor[32] = "arcade_15";
+int  groovy_mister_interlace   = GROOVY_MISTER_INTERLACE_SPLIT;
 
 static int gm_connected = 0;
 static int gm_sr_live   = 0;
@@ -503,11 +505,12 @@ groovy_mister_init(void)
      * load-bearing - the preset is resolved inside sr_init_disp, so it must be chosen
      * before that call.
      *
-     * arcade_15_25_31 rather than arcade_15: a PC's VGA modes run from 15kHz (320x200
-     * doublescanned) up to 31kHz (640x480 at 60Hz, 640x400 at 70Hz), and a 15kHz-only band
-     * refuses the top of that range outright. */
+     * The preset is the setting that matters most here. A PC's video modes run from 15kHz
+     * (320x200 doublescanned) up to 31kHz (640x480 at 60Hz, 640x350 at 70Hz), so a 15kHz
+     * band turns the top of that range into interlaced modes - which is what an arcade
+     * monitor needs - while a tri-sync or PC monitor would rather have them as rendered. */
     sr_init();
-    sr_set_monitor("arcade_15_25_31");
+    sr_set_monitor(groovy_mister_monitor[0] ? groovy_mister_monitor : "arcade_15");
     sr_init_disp("dummy", NULL);
     gm_sr_live = 1;
 
@@ -590,16 +593,6 @@ gm_set_mode(int w, int h, int hz)
         return 0;
     }
 
-    /* The client derives the stream length from the modeline with no clamp in between, so
-     * an oversized mode walks off the end of a RIO-registered allocation. A property of the
-     * client rather than of the display, so it is refused outright. */
-    bytes = mode.width * ((mode.interlace == 1) ? (mode.height / 2) : mode.height) * 3;
-    if (bytes > GM_MAX_BLIT_BYTES) {
-        gm_log("refusing %dx%d: %d bytes per blit is over the %d-byte buffer", mode.width,
-               mode.height, bytes, GM_MAX_BLIT_BYTES);
-        return 0;
-    }
-
     ml.pclock    = (double) mode.pclock / 1000000.0;
     ml.h_active  = (uint16_t) mode.width;
     ml.h_begin   = (uint16_t) mode.hbegin;
@@ -609,7 +602,32 @@ gm_set_mode(int w, int h, int hz)
     ml.v_begin   = (uint16_t) mode.vbegin;
     ml.v_end     = (uint16_t) mode.vend;
     ml.v_total   = (uint16_t) mode.vtotal;
-    ml.interlace = (uint8_t) mode.interlace;
+
+    /* 86Box always hands over a whole progressive frame, so an interlaced modeline goes out
+     * as mode 2 - progressive framebuffer, core splits it into fields - and never as mode 1,
+     * "fields from client", which makes the core read half as many lines per blit as the
+     * buffer actually holds. */
+    ml.interlace = mode.interlace ? (uint8_t) groovy_mister_interlace : 0;
+
+    if (mode.interlace && (groovy_mister_interlace == GROOVY_MISTER_INTERLACE_NEVER)) {
+        gm_log("%dx%d @ %dHz only fits an interlaced modeline on monitor preset '%s', but "
+               "interlacing is switched off. Nothing will be streamed for this mode - pick a "
+               "preset that reaches 31kHz, or allow interlacing.",
+               w, h, hz, groovy_mister_monitor);
+        return 0;
+    }
+
+    /* The client derives the stream length from the modeline with no clamp in between, so an
+     * oversized mode walks off the end of a RIO-registered allocation. A property of the
+     * client rather than of the display, so it is refused outright. Counted from the wire
+     * interlace value, not switchres's: only mode 1 sends half a frame per blit, and that is
+     * the one mode this integration never uses. */
+    bytes = ml.h_active * ((ml.interlace == 1) ? (ml.v_active / 2) : ml.v_active) * 3;
+    if (bytes > GM_MAX_BLIT_BYTES) {
+        gm_log("refusing %dx%d: %d bytes per blit is over the %d-byte buffer", ml.h_active,
+               ml.v_active, bytes, GM_MAX_BLIT_BYTES);
+        return 0;
+    }
 
     /* Same timings as what the core is already displaying: nothing to do. */
     if (gm_mode_valid && !memcmp(&ml, &gm_active_modeline, sizeof(ml)))
@@ -626,7 +644,7 @@ gm_set_mode(int w, int h, int hz)
 
     gm_log("mode %dx%d @ %dHz -> %.4fMHz h(%d %d %d) v(%d %d %d) interlace=%d", w, h, hz,
            (double) mode.pclock / 1000000.0, mode.hbegin, mode.hend, mode.htotal, mode.vbegin,
-           mode.vend, mode.vtotal, mode.interlace);
+           mode.vend, mode.vtotal, ml.interlace);
 
     return 1;
 }

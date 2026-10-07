@@ -2879,6 +2879,20 @@ load_groovy_mister(void)
     else
         groovy_mister_host[0] = '\0';
 
+    p = ini_section_get_string(cat, "monitor", NULL);
+    if (p != NULL)
+        strncpy(groovy_mister_monitor, p, sizeof(groovy_mister_monitor) - 1);
+    else
+        strncpy(groovy_mister_monitor, "arcade_15", sizeof(groovy_mister_monitor) - 1);
+    groovy_mister_monitor[sizeof(groovy_mister_monitor) - 1] = '\0';
+
+    /* Only 0 (never) and 2 (core splits a progressive frame) are meaningful here; 1 would
+     * mean 86Box sends one field per blit, which it has no way to do. */
+    groovy_mister_interlace = ini_section_get_int(cat, "interlace", GROOVY_MISTER_INTERLACE_SPLIT);
+    if ((groovy_mister_interlace != GROOVY_MISTER_INTERLACE_NEVER)
+        && (groovy_mister_interlace != GROOVY_MISTER_INTERLACE_SPLIT))
+        groovy_mister_interlace = GROOVY_MISTER_INTERLACE_SPLIT;
+
     /* Codes from the client's Lz4FramesCode: 0 raw, 1 LZ4, 7 NLC. */
     groovy_mister_codec      = ini_section_get_int(cat, "codec", 7);
     groovy_mister_near_level = ini_section_get_int(cat, "near_level", 0);
@@ -2901,6 +2915,16 @@ save_groovy_mister(void)
         ini_section_set_string(cat, "host", groovy_mister_host);
     else
         ini_section_delete_var(cat, "host");
+
+    if (groovy_mister_monitor[0] && strcmp(groovy_mister_monitor, "arcade_15"))
+        ini_section_set_string(cat, "monitor", groovy_mister_monitor);
+    else
+        ini_section_delete_var(cat, "monitor");
+
+    if (groovy_mister_interlace != GROOVY_MISTER_INTERLACE_SPLIT)
+        ini_section_set_int(cat, "interlace", groovy_mister_interlace);
+    else
+        ini_section_delete_var(cat, "interlace");
 
     if (groovy_mister_codec != 7)
         ini_section_set_int(cat, "codec", groovy_mister_codec);

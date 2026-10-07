@@ -21,6 +21,7 @@
 
 #include "qt_defs.hpp"
 #include "qt_settings.hpp"
+#include "qt_settingsgroovymister.hpp"
 #include "ui_qt_settings.h"
 #include "qt_mainwindow.hpp"
 #include "ui_qt_mainwindow.h"
@@ -109,6 +110,7 @@ private:
         "Floppy & CD-ROM drives",
         "Other removable devices",
         "Other peripherals",
+        "MiSTer",
     };
     QStringList page_icons = {
         "machine",
@@ -122,6 +124,7 @@ private:
         "floppy_and_cdrom_drives",
         "other_removable_devices",
         "other_peripherals",
+        "display",
     };
     int fontHeight;
 };
@@ -178,6 +181,7 @@ Settings::Settings(QWidget *parent)
     floppyCdrom        = nullptr;
     otherRemovable     = nullptr;
     otherPeripherals   = nullptr;
+    groovyMiSTer       = nullptr;
 
     ui->stackedWidget->addWidget(machine);
     for (int i = PAGE_DISPLAY; i < PAGE_COUNT; i++)
@@ -347,6 +351,15 @@ Settings::ensurePage(int index)
             }
             break;
 
+        /* Nothing on this page depends on the machine, so it needs no
+           currentMachineChanged connection. */
+        case PAGE_GROOVYMISTER:
+            if (groovyMiSTer == nullptr) {
+                groovyMiSTer = new SettingsGroovyMiSTer(this);
+                placePage(PAGE_GROOVYMISTER, groovyMiSTer);
+            }
+            break;
+
         default:
             break;
     }
@@ -414,6 +427,7 @@ Settings::save(int soft)
     floppyCdrom->save(soft);
     otherRemovable->save(soft);
     otherPeripherals->save(soft);
+    groovyMiSTer->save(soft);
 }
 
 void
