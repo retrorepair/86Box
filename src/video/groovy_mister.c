@@ -180,7 +180,6 @@ gm_set_mode(int w, int h, double hz)
            mode.hbegin, mode.hend, mode.htotal,
            mode.vbegin, mode.vend, mode.vtotal, mode.interlace);
 
-    gm_frame = 0; /* the core restarts its own frame ordering on a mode set */
     return 1;
 }
 
@@ -189,11 +188,21 @@ groovy_mister_blit(int x, int y, int w, int h, int monitor_index)
 {
     const monitor_t *mon = &monitors[monitor_index];
     const bitmap_t  *buf;
+    gmw_fpgaStatus   st;
     char            *dst;
     uint64_t         now;
     int              hz_x100;
     int              row;
     int              col;
+
+    /* One-shot trace of the first frame handed over, so a silent output can be told
+     * apart from one that is never called at all. */
+    static int first_seen = 0;
+    if (!first_seen) {
+        first_seen = 1;
+        gm_log("first frame offered: %dx%d at (%d,%d) monitor=%d buffer=%p connected=%d",
+               w, h, x, y, monitor_index, (void *) mon->target_buffer, gm_connected);
+    }
 
     if (!gm_connected || (w <= 0) || (h <= 0))
         return;
@@ -221,10 +230,17 @@ groovy_mister_blit(int x, int y, int w, int h, int monitor_index)
 
     hz_x100 = (int) (gm_rate_hz * 100.0 + 0.5);
 
-    /* Only reprogram on a real mode change. The rate is compared at 2dp so ordinary
-     * jitter in the measurement does not keep resetting the core's frame ordering. */
+    /* Anything this small is a transient during a mode change, not a video mode worth
+     * programming a CRT for - the BIOS offers an 80x400 region on the way up. */
+    if ((w < 160) || (h < 100))
+        return;
+
+    /* Only reprogram on a real mode change. A measured refresh wanders by a few Hz while
+     * the emulated machine settles (70.8 -> 65.6 -> 64.6 during POST), and every mode set
+     * resets the core's frame ordering, so the rate has to move by more than that wander
+     * to count. The size is exact, and that is what actually changes between modes. */
     if (!gm_mode_valid || (w != gm_mode_w) || (h != gm_mode_h) ||
-        (abs(hz_x100 - gm_mode_hz_x100) > 25)) {
+        (abs(hz_x100 - gm_mode_hz_x100) > 300)) {
         gm_mode_valid = gm_set_mode(w, h, gm_rate_hz);
         if (!gm_mode_valid)
             return;
@@ -250,7 +266,17 @@ groovy_mister_blit(int x, int y, int w, int h, int monitor_index)
         }
     }
 
-    gmw_blit(++gm_frame, 0, 1, 0, 0);
+    /* Frame numbers must stay ahead of the core's own free-running counter. The protocol
+     * wants a monotonically increasing number, and the client's watchdog reconnects when
+     * it sees no ACK advance - which is what happens if we restart at 0 after a mode set
+     * while the core is still echoing frame 66. Adopt the core's position whenever it
+     * leads, the same resync RetroArch and RPCS3 do. */
+    gmw_getStatus(&st);
+    ++gm_frame;
+    if (st.frame > gm_frame)
+        gm_frame = st.frame + 1;
+
+    gmw_blit(gm_frame, 0, 1, 0, 0);
     gmw_waitSync();
 }
 
